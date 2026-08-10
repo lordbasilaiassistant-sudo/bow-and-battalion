@@ -102,10 +102,12 @@ function recompute() {
 
   const gr = G.grades;
   m.popMax = 8 + (gr.slots || 0);   // bigger armies — the field can hold more of your soldiers
+  /* HP + damage scale endlessly; the speed/attack-speed portion caps at rank 14
+     so a deep drill never turns units into blurs that overshoot the field. */
   m.infHp += .15 * (gr.drill || 0); m.infDmg += .16 * (gr.drill || 0);
-  m.infSpd += .06 * (gr.drill || 0); m.infRate += .08 * (gr.drill || 0);
+  m.infSpd += .06 * Math.min(gr.drill || 0, 14); m.infRate += .08 * Math.min(gr.drill || 0, 14);
   m.vehHp += .16 * (gr.plating || 0); m.vehDmg += .17 * (gr.plating || 0);
-  m.vehSpd += .06 * (gr.plating || 0); m.vehRate += .08 * (gr.plating || 0);
+  m.vehSpd += .06 * Math.min(gr.plating || 0, 14); m.vehRate += .08 * Math.min(gr.plating || 0, 14);
   m.healBoost += .20 * (gr.hospital || 0);
   m.mageBoost += .15 * (gr.conduit || 0);
   m.wallDmg += .12 * (gr.siege || 0);
@@ -1587,10 +1589,10 @@ function buildArmory() {
     const can = !maxed && G.gold >= cost;
     const d = document.createElement('div');
     d.className = 'gcard ' + (maxed ? 'max' : can ? 'can' : 'no');
-    const pipN = Math.min(g.max, 12);                       // endless grades don't render 9999 pips
+    const pipN = g.endless ? 12 : Math.min(g.max, 12);      // endless grades show a fixed pip strip
     let pips = ''; for (let i = 0; i < pipN; i++) pips += `<i class="${i < Math.min(lv, pipN) ? 'on' : ''}"></i>`;
     d.innerHTML = `<div class="gIco">${svg(g.icon)}</div><div class="gBody">
-      <div class="gName"><span>${g.name}</span><span class="gLv">${lv}${g.endless ? '' : ' / ' + g.max}</span></div>
+      <div class="gName"><span>${g.name}</span><span class="gLv">${g.endless ? 'RANK ' + lv + ' · ∞' : lv + ' / ' + g.max}</span></div>
       <div class="gEff">${g.unit}</div>
       <div class="gDesc">${g.desc}</div>
       <div class="gPips">${pips}</div>
