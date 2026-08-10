@@ -2,15 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#05060a">
 <title>BOW &amp; BATTALION — The Road of Cities</title>
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <div id="app">
   <div id="stage">
     <canvas id="game"></canvas>
     <div id="vignette"></div>
+
+    <!-- ============ ROTATE NUDGE (touch · portrait only) ============ -->
+    <div id="rotate">
+      <div class="rotInner">
+        <div class="rotIco">⟳</div>
+        <div class="rotTitle">TURN YOUR DEVICE</div>
+        <div class="rotSub">BOW &amp; BATTALION holds the wall in landscape.<br>Rotate to take the field.</div>
+      </div>
+    </div>
 
     <!-- ================= TOP HUD ================= -->
     <header id="hud">
@@ -161,10 +174,15 @@
           <button class="btn ghost" id="btnTechP">⌬ WAR COUNCIL</button>
           <button class="btn danger" id="btnAbandon">ABANDON THE MARCH</button>
         </div>
-        <div class="keys">
+        <div class="keys mouseOnly">
           <b>HOLD LMB</b> draw the bow — release to loose &nbsp;·&nbsp; <b>1</b>–<b>6</b> quiver<br>
           <b>Q W E R A S D F G H J</b> muster a soldier &nbsp;·&nbsp; <b>Z X C V</b> commands<br>
           <b>T</b> war council &nbsp;·&nbsp; <b>SPACE</b> march on &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause
+        </div>
+        <div class="keys touchOnly">
+          <b>HOLD &amp; DRAG</b> the field to draw the bow — lift to loose<br>
+          Tap <b>QUIVER</b> to switch arrows &nbsp;·&nbsp; tap <b>MUSTER</b> to raise soldiers<br>
+          Tap <b>COMMAND</b> for barrage, napalm, rally &amp; repair
         </div>
       </div>
     </div>
@@ -191,7 +209,8 @@
           <button class="btn ghost big" id="btnContinue" hidden>CONTINUE — CITY <span id="contWave">1</span></button>
         </div>
         <div class="tHow">
-          <div><b>HOLD MOUSE</b> to draw the bow · aim with the cursor · <b>RELEASE</b> to loose · headshots hurt</div>
+          <div class="mouseOnly"><b>HOLD MOUSE</b> to draw the bow · aim with the cursor · <b>RELEASE</b> to loose · headshots hurt</div>
+          <div class="touchOnly"><b>HOLD &amp; DRAG</b> the field to draw the bow · slide to aim · <b>LIFT</b> to loose · headshots hurt</div>
           <div>Melee marches to their gate. Archers and guns hold the line behind them. You pay for all of it.</div>
         </div>
       </div>
@@ -200,9 +219,9 @@
   </div>
 </div>
 
-<script src="js/util.js?v=14"></script>
-<script src="js/data.js?v=14"></script>
-<script src="js/art.js?v=14"></script>
-<script src="js/game.js?v=14"></script>
+<script src="js/util.js?v=15"></script>
+<script src="js/data.js?v=15"></script>
+<script src="js/art.js?v=15"></script>
+<script src="js/game.js?v=15"></script>
 </body>
 </html>
