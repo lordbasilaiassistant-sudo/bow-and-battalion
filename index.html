@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>BOW &amp; BATTALION — The Road of Cities</title>
+<link rel="stylesheet" href="style.css?v=13">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="vignette"></div>
+
+    <!-- ================= TOP HUD ================= -->
+    <header id="hud">
+      <div class="plate castlePlate">
+        <div class="plateLabel">YOUR FORTRESS</div>
+        <div class="barWrap">
+          <div class="bar"><i id="castleBar"></i></div>
+          <div class="barTxt" id="castleTxt">1000 / 1000</div>
+        </div>
+        <div class="subrow">
+          <span class="chip" id="shieldChip" hidden>◈ <b id="shieldTxt">0</b></span>
+          <span class="chip" id="regenChip" hidden>✚ MENDING</span>
+          <span class="chip pop" id="popChip">▮ <b id="popTxt">0/6</b></span>
+        </div>
+      </div>
+
+      <div class="plate cityPlate">
+        <div class="cityIdx">CITY <span id="cityNum">1</span></div>
+        <div class="cityName" id="cityName">Ironmaw</div>
+        <div class="cityTraits" id="cityTraits"></div>
+      </div>
+
+      <div class="plate resPlate">
+        <div class="res gold"><span class="ico">◍</span><span id="goldTxt">0</span></div>
+        <div class="res rp"><span class="ico">✦</span><span id="rpTxt">0</span></div>
+        <div class="res wind"><span class="ico" id="windArrow">→</span><span id="windTxt">0.0</span></div>
+      </div>
+
+      <div class="plate heroPlate">
+        <div class="heroTop">
+          <span class="lvBadge">LV <b id="heroLv">1</b></span>
+          <span class="bowName" id="bowName">HUNTING BOW</span>
+        </div>
+        <div class="xpBar"><i id="xpBar"></i></div>
+        <div class="spTag" id="spTag" hidden><b id="spTxt">1</b> SKILL POINT</div>
+      </div>
+
+      <div class="plate scorePlate">
+        <div class="scoreVal" id="scoreTxt">0</div>
+        <div class="scoreLbl">SCORE</div>
+        <div class="combo" id="comboTag" hidden>×<span id="comboTxt">2</span></div>
+      </div>
+
+      <div class="hudBtns">
+        <button class="ibtn" id="btnTech" title="War Council (T)">⌬<em>T</em></button>
+        <button class="ibtn" id="btnMute" title="Sound (M)">♪<em>M</em></button>
+        <button class="ibtn" id="btnPause" title="Pause (Esc)">❚❚<em>ESC</em></button>
+      </div>
+    </header>
+
+    <!-- ================= ENEMY CITY WALLS ================= -->
+    <div id="campBar">
+      <span id="campName">CITY WALLS</span>
+      <div class="bar sm"><i id="campBarFill"></i></div>
+    </div>
+
+    <!-- ================= BANNER ================= -->
+    <div id="banner"><div class="bTop" id="bTop">IRONMAW</div><div class="bSub" id="bSub">THE FIRST CITY</div></div>
+
+    <!-- ================= INTERMISSION ================= -->
+    <div id="inter" hidden>
+      <div class="interInner">
+        <div class="interKicker" id="interKicker">THE WALLS ARE BROKEN</div>
+        <div class="interTitle" id="interTitle">IRONMAW HAS FALLEN</div>
+        <div class="interRewards" id="interRewards"></div>
+        <div class="nextCity" id="nextCity"></div>
+        <div class="interBtns">
+          <button class="btn ghost" id="btnInterTech">⌬ WAR COUNCIL <em>T</em></button>
+          <button class="btn primary" id="btnNext">MARCH ON <em>SPACE</em></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= DOCK ================= -->
+    <div id="dock">
+      <div class="dockGroup" id="arrowGroup">
+        <div class="dockLbl">QUIVER</div>
+        <div class="dockRow" id="arrowRow"></div>
+      </div>
+      <div class="dockGroup grow" id="unitGroup">
+        <div class="dockLbl">MUSTER <span class="popcap" id="popcap">0 / 6 SLOTS</span></div>
+        <div class="dockRow" id="unitRow"></div>
+      </div>
+      <div class="dockGroup" id="abilityGroup">
+        <div class="dockLbl">COMMAND</div>
+        <div class="dockRow" id="abilityRow"></div>
+      </div>
+    </div>
+
+    <div id="toasts"></div>
+
+    <!-- ================= WAR COUNCIL ================= -->
+    <div id="tech" hidden>
+      <div class="techHead">
+        <h2>WAR COUNCIL</h2>
+        <nav class="tabs">
+          <button class="tab on" data-tab="tree">DOCTRINE</button>
+          <button class="tab" data-tab="armory">ARMORY</button>
+          <button class="tab" data-tab="hero">THE ARCHER</button>
+        </nav>
+        <div class="techRes">
+          <span class="res rp big"><span class="ico">✦</span><span id="techRp">0</span></span>
+          <span class="res gold big"><span class="ico">◍</span><span id="techGold">0</span></span>
+        </div>
+        <button class="ibtn close" id="btnTechClose">✕</button>
+      </div>
+
+      <div class="techBody">
+        <section class="pane on" id="paneTree">
+          <div class="techScroll"><div class="techInner" id="techInner">
+            <svg id="techLines" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div></div>
+        </section>
+
+        <section class="pane" id="paneArmory">
+          <div class="armScroll">
+            <div class="armLead">Gold buys grades. Every grade is permanent and carries to the next city.</div>
+            <div class="armGrid" id="armGrid"></div>
+            <div class="armLead sep">HERO ARMAMENT</div>
+            <div class="bowRack" id="bowRack"></div>
+          </div>
+        </section>
+
+        <section class="pane" id="paneHero">
+          <div class="armScroll">
+            <div class="heroHead">
+              <div class="heroBig">
+                <div class="hLv">LEVEL <b id="hLvBig">1</b></div>
+                <div class="hXp"><i id="hXpBig"></i></div>
+                <div class="hXpTxt" id="hXpTxt">0 / 58 XP</div>
+              </div>
+              <div class="heroSp" id="heroSp">0 UNSPENT</div>
+            </div>
+            <div class="skillGrid" id="skillGrid"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="techFoot"><div id="techTip">Choose a doctrine. Research is torn from the wreckage of every city you break.</div></div>
+    </div>
+
+    <!-- ================= PAUSE ================= -->
+    <div id="pause" hidden>
+      <div class="pauseInner">
+        <div class="pTitle">HOLD THE LINE</div>
+        <div class="pRow">
+          <button class="btn primary" id="btnResume">RESUME</button>
+          <button class="btn ghost" id="btnTechP">⌬ WAR COUNCIL</button>
+          <button class="btn danger" id="btnAbandon">ABANDON THE MARCH</button>
+        </div>
+        <div class="keys">
+          <b>HOLD LMB</b> draw the bow — release to loose &nbsp;·&nbsp; <b>1</b>–<b>6</b> quiver<br>
+          <b>Q W E R A S D F G H J</b> muster a soldier &nbsp;·&nbsp; <b>Z X C V</b> commands<br>
+          <b>T</b> war council &nbsp;·&nbsp; <b>SPACE</b> march on &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= DEFEAT ================= -->
+    <div id="over" hidden>
+      <div class="overInner">
+        <div class="oTitle">THE GATE HAS FALLEN</div>
+        <div class="oSub" id="oSub">Your banner burns over the ruin of your own keep.</div>
+        <div class="oStats" id="oStats"></div>
+        <button class="btn primary big" id="btnRetry">RAISE A NEW BANNER</button>
+      </div>
+    </div>
+
+    <!-- ================= TITLE ================= -->
+    <div id="title">
+      <div class="tWrap">
+        <div class="tKicker">A ROAD OF CITIES · EACH ONE WORSE</div>
+        <h1 class="tTitle"><span>BOW</span><i>&amp;</i><span>BATTALION</span></h1>
+        <div class="tRule"></div>
+        <p class="tBlurb">You hold the west wall with a longbow and whatever army your gold can raise. East of the field stands a city that wants yours. Break it, take what is left, and march on the next — they only get stronger.</p>
+        <div class="tBtns">
+          <button class="btn primary big" id="btnPlay">MARCH</button>
+          <button class="btn ghost big" id="btnContinue" hidden>CONTINUE — CITY <span id="contWave">1</span></button>
+        </div>
+        <div class="tHow">
+          <div><b>HOLD MOUSE</b> to draw the bow · aim with the cursor · <b>RELEASE</b> to loose · headshots hurt</div>
+          <div>Melee marches to their gate. Archers and guns hold the line behind them. You pay for all of it.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/util.js?v=13"></script>
+<script src="js/data.js?v=13"></script>
+<script src="js/art.js?v=13"></script>
+<script src="js/game.js?v=13"></script>
+</body>
+</html>

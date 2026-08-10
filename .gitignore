@@ -1,0 +1,14 @@
+# agent / editor state — never ship
+CLAUDE.md
+.claude/
+*.local.md
+
+# OS junk
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# logs & scratch
+*.log
+scratch/
+tmp/
