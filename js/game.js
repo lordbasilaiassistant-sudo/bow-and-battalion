@@ -119,7 +119,7 @@ function spawnUnit(def) {
   const m = G.mods, veh = !!def.veh;
   const hpMul = 1 + m.unitHp + (veh ? m.vehHp : m.infHp);
   const dmgMul = 1 + m.unitDmg + (veh ? m.vehDmg : m.infDmg);
-  const lane = rnd(-12, 12);
+  const lane = rnd(-16, 16);
   const c = {
     team: 1, def, id: def.id, x: MY_GATE - 16, y: def.fly ? 470 + rnd(-30, 30) : GROUND + lane, stance: def.stance,
     hp: def.hp * hpMul, max: def.hp * hpMul,
@@ -141,7 +141,7 @@ function spawnFoe(fd, champ) {
   let armor = fd.armor;
   let rate = fd.rate;
   if (champ) { hp *= champ.hp; dmg *= champ.dmg; r = champ.r; spd *= champ.spd; s = champ.r / 13; armor = Math.min(armor, .30); rate *= 1.6; }
-  const lane = rnd(-12, 12);
+  const lane = rnd(-16, 16);
   const c = {
     team: -1, def: fd, id: fd.id, x: EN_GATE + 16, y: fd.fly ? 470 + rnd(-40, 40) : GROUND + lane,
     stance: fd.stance, hp, max: hp, dmg, rate, range: fd.range, spd,
@@ -193,8 +193,10 @@ function blockedAhead(c, d) {
   for (const o of G.A) {
     if (o === c || o.team !== c.team || !alive(o) || o.fly !== c.fly) continue;
     if (o.engaged) continue;                 // fighters don't block — flow around them
+    if (o.stance !== c.stance) continue;     // only your own kind forms your queue —
+                                             // melee streams past held archers, tanks past infantry
     const rel = (o.x - c.x) * c.team;
-    if (rel > 0 && rel < d && Math.abs(o.y - c.y) < 26) return true;
+    if (rel > 0 && rel < d && Math.abs(o.y - c.y) < 20) return true;
   }
   return false;
 }
