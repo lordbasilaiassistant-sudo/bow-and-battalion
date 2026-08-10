@@ -1777,8 +1777,8 @@ document.addEventListener('visibilitychange', () => {
 /* =========================================================================
    WIRE UI
    ========================================================================= */
-$('btnPlay').onclick = () => startRun(false);
-$('btnContinue').onclick = () => startRun(true);
+$('btnPlay').onclick = () => { goImmersive(); startRun(false); };
+$('btnContinue').onclick = () => { goImmersive(); startRun(true); };
 $('btnTech').onclick = () => ($('tech').hidden ? openCouncil() : closeCouncil());
 $('btnTechClose').onclick = closeCouncil;
 $('btnInterTech').onclick = () => openCouncil();
@@ -1791,6 +1791,53 @@ $('btnAbandon').onclick = () => { localStorage.removeItem('bowbat_save'); locati
 $('btnRetry').onclick = () => location.reload();
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => { switchTab(t.dataset.tab); SFX.ui(); });
 $('tech').addEventListener('click', e => { if (e.target.id === 'tech') closeCouncil(); });
+
+/* =========================================================================
+   PWA — installable, fullscreen, offline
+   ========================================================================= */
+const STANDALONE = matchMedia('(display-mode: standalone)').matches
+  || matchMedia('(display-mode: fullscreen)').matches
+  || navigator.standalone === true;
+
+/* On a touch device, launching claims the whole screen and pins landscape
+   so the browser chrome and the rotate nudge both get out of the way.
+   Everything here is best-effort — unsupported calls fail quietly. */
+function goImmersive() {
+  if (!IS_TOUCH) return;
+  const el = document.documentElement;
+  if (!document.fullscreenElement && el.requestFullscreen) {
+    el.requestFullscreen({ navigationUI: 'hide' }).catch(() => { });
+  }
+  const so = screen.orientation;
+  if (so && so.lock) so.lock('landscape').catch(() => { });
+}
+
+/* Install affordance: Android/desktop Chrome fire beforeinstallprompt;
+   iOS Safari has no prompt, so it gets an Add-to-Home-Screen hint. */
+let deferredInstall = null;
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  if (!STANDALONE) $('btnInstall').hidden = false;
+  $('installHint').hidden = true;
+});
+$('btnInstall').onclick = async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice.catch(() => { });
+  deferredInstall = null;
+  $('btnInstall').hidden = true;
+};
+addEventListener('appinstalled', () => { $('btnInstall').hidden = true; $('installHint').hidden = true; });
+
+/* iOS: no install button, so point players at Share ▸ Add to Home Screen */
+if (IS_TOUCH && !STANDALONE && !('onbeforeinstallprompt' in window)) {
+  $('installHint').hidden = false;
+}
+
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
+}
 
 /* =========================================================================
    BOOT

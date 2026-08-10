@@ -420,6 +420,12 @@ canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block;curso
 .tBtns{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
 .tHow{margin-top:26px;font:400 11px/1.9 var(--f-ser);color:#6f6858}
 .tHow b{color:#c2ac7c;font-family:var(--f-ui);font-size:10px;letter-spacing:.09em}
+.installHint{margin-top:16px;display:inline-flex;align-items:center;gap:7px;
+  font:700 9.5px/1.3 var(--f-ui);letter-spacing:.16em;color:#c9b98c;
+  padding:7px 12px;background:linear-gradient(180deg,rgba(35,33,26,.7),rgba(10,10,14,.7));
+  border:1px solid var(--edge2);
+  clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+.installHint::before{content:"⤓";font-size:14px;color:var(--gold)}
 
 /* ============ WAR COUNCIL: tabs, panes, armory, hero ============ */
 .tabs{display:flex;gap:4px;margin-left:8px}
