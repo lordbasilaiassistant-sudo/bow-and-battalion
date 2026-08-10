@@ -34,9 +34,14 @@ function resize() {
 function reframe() { resize(); requestAnimationFrame(resize); setTimeout(resize, 150); setTimeout(resize, 450); }
 addEventListener('resize', resize);
 addEventListener('orientationchange', reframe);
+addEventListener('pageshow', reframe);
 document.addEventListener('fullscreenchange', reframe);
 document.addEventListener('webkitfullscreenchange', reframe);
 if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+/* the authoritative signal — fires whenever the canvas box actually changes,
+   catching fullscreen, rotation, URL-bar and standalone-launch resizes without
+   guessing at timings. */
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(cv.parentElement);
 
 /* screen px -> world */
 function toWorld(cx, cy) {
@@ -1847,6 +1852,15 @@ if (IS_TOUCH && !STANDALONE && !('onbeforeinstallprompt' in window)) {
 }
 
 if ('serviceWorker' in navigator) {
+  /* auto-apply a new build: when a fresh worker takes control of an
+     already-controlled page, reload once so players never sit on a stale
+     cached version (the source of "still the same issue"). */
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return;   // first-ever install: nothing to refresh
+    reloaded = true; location.reload();
+  });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 }
 

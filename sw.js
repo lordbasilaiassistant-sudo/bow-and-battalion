@@ -4,15 +4,15 @@
    version changes so clients pick up the new shell. */
 'use strict';
 
-const CACHE = 'bowbat-v17';
+const CACHE = 'bowbat-v18';
 const ASSETS = [
   './',
   './index.html',
-  './style.css?v=17',
-  './js/util.js?v=17',
-  './js/data.js?v=17',
-  './js/art.js?v=17',
-  './js/game.js?v=17',
+  './style.css?v=18',
+  './js/util.js?v=18',
+  './js/data.js?v=18',
+  './js/art.js?v=18',
+  './js/game.js?v=18',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
