@@ -20,6 +20,7 @@ let VS = 1, VOX = 0, VOY = 0;             // view scale / offset (letterbox)
 
 function resize() {
   const r = cv.parentElement.getBoundingClientRect();
+  if (!r.width || !r.height) return;       // mid-transition (fullscreen/rotate) — skip until a real size lands
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const sx = cv.width / W, sy = cv.height / H;
@@ -27,7 +28,15 @@ function resize() {
   VOX = (cv.width - W * VS) / 2;
   VOY = (cv.height - H * VS) * .44;       // field sits near center; the dock owns the soil band
 }
+/* Fullscreen, rotation and mobile URL-bar changes settle over several frames,
+   often reporting a bogus size on the first event. Reframe a few times so the
+   battlefield always ends up filling the new viewport instead of vanishing. */
+function reframe() { resize(); requestAnimationFrame(resize); setTimeout(resize, 150); setTimeout(resize, 450); }
 addEventListener('resize', resize);
+addEventListener('orientationchange', reframe);
+document.addEventListener('fullscreenchange', reframe);
+document.addEventListener('webkitfullscreenchange', reframe);
+if (window.visualViewport) visualViewport.addEventListener('resize', resize);
 
 /* screen px -> world */
 function toWorld(cx, cy) {
@@ -1805,11 +1814,13 @@ const STANDALONE = matchMedia('(display-mode: standalone)').matches
 function goImmersive() {
   if (!IS_TOUCH) return;
   const el = document.documentElement;
-  if (!document.fullscreenElement && el.requestFullscreen) {
-    el.requestFullscreen({ navigationUI: 'hide' }).catch(() => { });
-  }
-  const so = screen.orientation;
-  if (so && so.lock) so.lock('landscape').catch(() => { });
+  const fs = (!document.fullscreenElement && el.requestFullscreen)
+    ? el.requestFullscreen({ navigationUI: 'hide' }) : Promise.resolve();
+  Promise.resolve(fs).catch(() => { }).finally(() => {
+    const so = screen.orientation;
+    if (so && so.lock) so.lock('landscape').catch(() => { });
+    reframe();                              // canvas must refit the new fullscreen/locked viewport
+  });
 }
 
 /* Install affordance: Android/desktop Chrome fire beforeinstallprompt;
@@ -1842,7 +1853,8 @@ if ('serviceWorker' in navigator) {
 /* =========================================================================
    BOOT
    ========================================================================= */
-resize();
+reframe();
+addEventListener('load', reframe);         // standalone app / late layout — settle the first frame
 recompute();
 buildDock();
 {
