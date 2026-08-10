@@ -1,0 +1,19 @@
+{
+  "name": "BOW & BATTALION — The Road of Cities",
+  "short_name": "Bow & Battalion",
+  "description": "An endless two-sided siege war in a single page. Hold the west wall with a longbow and the army your gold can raise.",
+  "id": "./",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "landscape",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

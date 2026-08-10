@@ -7,8 +7,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#05060a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>BOW &amp; BATTALION — The Road of Cities</title>
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <div id="app">
@@ -207,7 +211,9 @@
         <div class="tBtns">
           <button class="btn primary big" id="btnPlay">MARCH</button>
           <button class="btn ghost big" id="btnContinue" hidden>CONTINUE — CITY <span id="contWave">1</span></button>
+          <button class="btn ghost big" id="btnInstall" hidden>⤓ INSTALL</button>
         </div>
+        <div class="installHint" id="installHint" hidden>Add to Home Screen for fullscreen, offline play.</div>
         <div class="tHow">
           <div class="mouseOnly"><b>HOLD MOUSE</b> to draw the bow · aim with the cursor · <b>RELEASE</b> to loose · headshots hurt</div>
           <div class="touchOnly"><b>HOLD &amp; DRAG</b> the field to draw the bow · slide to aim · <b>LIFT</b> to loose · headshots hurt</div>
@@ -219,9 +225,9 @@
   </div>
 </div>
 
-<script src="js/util.js?v=15"></script>
-<script src="js/data.js?v=15"></script>
-<script src="js/art.js?v=15"></script>
-<script src="js/game.js?v=15"></script>
+<script src="js/util.js?v=16"></script>
+<script src="js/data.js?v=16"></script>
+<script src="js/art.js?v=16"></script>
+<script src="js/game.js?v=16"></script>
 </body>
 </html>

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="36%" r="78%">
+      <stop offset="0%" stop-color="#1b1826"/>
+      <stop offset="52%" stop-color="#0b0d14"/>
+      <stop offset="100%" stop-color="#050609"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe8ae"/>
+      <stop offset="46%" stop-color="#f2c45c"/>
+      <stop offset="100%" stop-color="#9d6c1c"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#f2b64c" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="250" fill="none" stroke="#2a2416" stroke-width="4" opacity="0.5"/>
+  <g filter="url(#glow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- bow limbs bulge toward the target (right) -->
+    <path d="M334 118 C398 200 398 312 334 394" stroke="url(#gold)" stroke-width="26"/>
+    <!-- string drawn back to the nock (apex left) -->
+    <path d="M334 118 L206 256 L334 394" stroke="#ffe8ae" stroke-width="5" opacity="0.9"/>
+    <!-- arrow shaft: nock at the string, flying right -->
+    <path d="M206 256 L400 256" stroke="#f0d68e" stroke-width="9"/>
+  </g>
+  <g filter="url(#glow)" stroke-linejoin="round">
+    <!-- arrowhead past the riser, toward the target -->
+    <polygon points="400,238 432,256 400,274" fill="url(#gold)"/>
+    <!-- fletching at the nock (back of the arrow) -->
+    <polygon points="206,256 176,242 200,256" fill="#e0392f"/>
+    <polygon points="206,256 176,270 200,256" fill="#ff8a3c"/>
+  </g>
+</svg>
