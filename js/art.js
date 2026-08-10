@@ -93,6 +93,20 @@ const Art = (() => {
     rg.addColorStop(0, hexA(pal.glow, 0)); rg.addColorStop(1, hexA(pal.glow, .14));
     c.fillStyle = rg; ridgePath(c, GROUND - 96, 210, city.seed * 7); c.fill(); c.restore();
 
+    /* seeded peaks — each city gets its own mountain profile on the horizon */
+    const peaks = 2 + Math.floor(hash1(city.seed * 23) * 4);
+    for (let i = 0; i < peaks; i++) {
+      const px = hash1(i * 9.7 + city.seed * 11) * W;
+      const pw = 200 + hash1(i * 3.3 + city.seed) * 300;
+      const ph = 130 + hash1(i * 5.5 + city.seed * 3) * 210;
+      const py = GROUND - 78, sk = (hash1(i * 2.1) - .5) * pw * .3;
+      c.fillStyle = pal.far;
+      c.beginPath(); c.moveTo(px - pw / 2, py); c.lineTo(px + sk, py - ph); c.lineTo(px + pw / 2, py); c.closePath(); c.fill();
+      /* snow/glow cap catching the horizon light */
+      c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = hexA(pal.glow, .1);
+      c.beginPath(); c.moveTo(px + sk, py - ph); c.lineTo(px + sk + pw * .12, py - ph * .74); c.lineTo(px + sk - pw * .1, py - ph * .74); c.closePath(); c.fill(); c.restore();
+    }
+
     /* mid ridge + ruined towers */
     c.fillStyle = pal.mid; ridgePath(c, GROUND - 44, 128, city.seed * 13 + 40); c.fill();
 
@@ -129,6 +143,18 @@ const Art = (() => {
     c.beginPath(); c.moveTo(-10, 190);
     for (let x = -10; x <= W + 10; x += 22) c.lineTo(x, 150 - fbm(x * .006 + 9 + city.seed * 5, 3) * 34);
     c.lineTo(W + 10, 190); c.closePath(); c.fill();
+    /* seeded boulders — each city's field is littered differently */
+    const rocks = 2 + Math.floor(hash1(city.seed * 17) * 5);
+    for (let i = 0; i < rocks; i++) {
+      const bx = 120 + hash1(i * 7.1 + city.seed * 3) * (W - 240);
+      const bw = 30 + hash1(i * 2.3 + city.seed) * 62, bh = 18 + hash1(i * 4.9 + city.seed) * 34;
+      const by = 152 - fbm(bx * .006 + 9 + city.seed * 5, 3) * 30;
+      c.fillStyle = pal.near;
+      c.beginPath(); c.moveTo(bx - bw / 2, by);
+      c.quadraticCurveTo(bx - bw * .42, by - bh, bx - bw * .1, by - bh);
+      c.quadraticCurveTo(bx + bw * .38, by - bh * .96, bx + bw / 2, by);
+      c.closePath(); c.fill();
+    }
     /* scrub */
     c.strokeStyle = pal.near; c.lineWidth = 2;
     for (let i = 0; i < 90; i++) {
@@ -772,6 +798,28 @@ const Art = (() => {
     for (let x = EN_WALL + 4; x < W; x += 24) { ctx.fillStyle = st.trim; ctx.fillRect(x, base - wallH - 16, 14, 18); }
     ctx.fillStyle = 'rgba(0,0,0,.2)';
     for (let y = base - wallH + 14; y < base; y += 16) ctx.fillRect(EN_WALL, y, W - EN_WALL, 2);
+
+    /* --- forward works: an outer rampart the army breaches before the keep --- */
+    if (g.foeOuter) {
+      const of = Math.max(0, g.foeOuter.hp / g.foeOuter.max);
+      const ox = EN_WALL - 104, ow = 76;
+      if (of > 0) {
+        const oh = 38 + 94 * of;                                   // slumps as it is battered down
+        ctx.fillStyle = st.stone; ctx.fillRect(ox, base - oh, ow, oh + 6);
+        ctx.fillStyle = 'rgba(0,0,0,.32)'; ctx.fillRect(ox, base - oh, 10, oh + 6);
+        ctx.fillStyle = st.trim;
+        for (let x = ox + 4; x < ox + ow; x += 20) if (hash1((x + cy.seed) * .3) < of * 1.1) ctx.fillRect(x, base - oh - 14, 12, 16);
+        ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2;
+        const cracks = Math.floor(6 * (1 - of));
+        for (let i = 0; i < cracks; i++) { const cx = ox + hash1(i * 3 + cy.seed) * ow, cyy = base - oh + hash1(i * 5) * oh;
+          ctx.beginPath(); ctx.moveTo(cx, cyy); ctx.lineTo(cx + hash1(i) * 10 - 5, cyy + 15); ctx.stroke(); }
+      } else {                                                     // breached — a low rubble mound remains
+        ctx.fillStyle = st.stone;
+        ctx.beginPath(); ctx.moveTo(ox - 6, base + 6);
+        for (let x = ox; x <= ox + ow; x += 12) ctx.lineTo(x, base - 6 - hash1((x + cy.seed) * .5) * 24);
+        ctx.lineTo(ox + ow + 6, base + 6); ctx.closePath(); ctx.fill();
+      }
+    }
 
     /* --- gate: units pour out of a lit maw --- */
     const gx = EN_GATE + 14;

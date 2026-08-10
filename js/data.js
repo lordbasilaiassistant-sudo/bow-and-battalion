@@ -207,10 +207,10 @@ const SKILLS = [
 const GRADES = [
   { id:'slots',  name:'ARMY SLOTS',    icon:'plate', base:110, mul:1.30, max:22, unit:'+1 SLOT',
     desc:'Field more soldiers at once. Every unit occupies slots equal to its weight.' },
-  { id:'drill',  name:'INFANTRY DRILL',icon:'helm',  base:150, mul:1.36, max:12, unit:'+15% HP / +12% DMG',
-    desc:'Drill your infantry harder. Applies to swordsmen, shieldmen, berserkers, knights, archers, musketeers and crews.' },
-  { id:'plating',name:'ARMOR PLATING', icon:'tank',  base:260, mul:1.38, max:12, unit:'+16% HP / +13% DMG',
-    desc:'Welded appliqué and better optics for every tracked and walking vehicle you own.' },
+  { id:'drill',  name:'INFANTRY DRILL',icon:'helm',  base:150, mul:1.35, max:14, unit:'+15% HP · +16% DMG · +6% SPD · +8% ATK SPD',
+    desc:'Drill your infantry harder across the board — health, damage, march speed AND attack speed. Applies to swordsmen, shieldmen, berserkers, knights, archers, musketeers and crews.' },
+  { id:'plating',name:'ARMOR PLATING', icon:'tank',  base:260, mul:1.37, max:14, unit:'+16% HP · +17% DMG · +6% SPD · +8% RELOAD',
+    desc:'Welded appliqué, better engines and better optics for every tracked and walking vehicle — tougher, deadlier, faster, and quicker to reload.' },
   { id:'walls',  name:'CURTAIN WALL',  icon:'gate',  base:180, mul:1.32, max:15, unit:'+11% FORTRESS HP',
     desc:'Thicker stone, deeper foundations. Also fully repairs the wall on purchase.' },
   { id:'purse',  name:'WAR CHEST',     icon:'coin',  base:190, mul:1.38, max:12, unit:'+11% GOLD',
@@ -387,17 +387,23 @@ function makeCity(n) {
   }
 
   const s = Math.pow(n, 1.16);
-  let hp = 580 + 420 * s;
-  let income = .9 + .5 * n + n * n * .024;
-  let dmg = 1 + .072 * (n - 1);
+  let hp = 580 + 420 * s;                                  // castle stays a real wall — the army breaks it
+  let income = 1.0 + .6 * n + n * n * .028;                // deeper coffers → the road fields bigger armies
+  let dmg = 1 + .08 * (n - 1) + .0007 * (n - 1) * (n - 1); // enemy damage bites harder the deeper you go
   let turret = n >= 6 ? 1 : 0;
   if (n >= 15) turret = 2;
+  if (n >= 26) turret = 3;
   traits.forEach(t => {
     if (t.hp) hp *= t.hp;
     if (t.income) income *= t.income;
     if (t.dmg) dmg *= t.dmg;
     if (t.turret) turret += t.turret;
   });
+  const hasBastion = traits.some(t => t.id === 'bastion');
+  /* forward works some cities raise — an outer rampart the army must breach
+     before it can touch the keep. Bastion wardens always have them. */
+  const outerHp = (hasBastion || (n >= 3 && chash(n, 7) > .62))
+    ? Math.round(hp * (.32 + chash(n, 8) * .22)) : 0;
 
   /* weighted roster available to this city */
   const roster = [];
@@ -418,13 +424,15 @@ function makeCity(n) {
     style: CITY_STYLES[(r4 * CITY_STYLES.length) | 0],
     seed: r5,
     castleHp: Math.round(hp),
+    outerHp,                                               // 0 = no forward works
     income, dmgMul: dmg,
-    hpMul: 1 + .088 * (n - 1),
-    budget0: Math.round(38 + 30 * n),
+    hpMul: 1 + .095 * (n - 1) + .0014 * (n - 1) * (n - 1), // enemy health scales hard late
+    spdMul: 1 + Math.min(.65, .012 * (n - 1)),            // and they cross the field faster
+    budget0: Math.round(44 + 34 * n),
     roster,
     turrets: turret,
     champ: n % 5 === 0 ? CHAMPS[((n / 5 | 0) - 1) % CHAMPS.length] : null,
-    goldRw: Math.round(140 + 86 * n + n * n * 2),
+    goldRw: Math.round(185 + 115 * n + n * n * 3),
     rpRw: 2 + Math.floor(n / 2) + (n % 5 === 0 ? 3 : 0),
     biome: BIOMES[((n - 1) / 3 | 0) % BIOMES.length],
   };
