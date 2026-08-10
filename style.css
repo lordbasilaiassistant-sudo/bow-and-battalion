@@ -590,19 +590,55 @@ body.touch #dock{padding-bottom:calc(10px + env(safe-area-inset-bottom));
   padding-right:calc(10px + env(safe-area-inset-right))}
 body.touch #campBar{right:calc(12px + env(safe-area-inset-right))}
 
-/* short landscape phones: reclaim vertical room for the battlefield */
-@media (orientation:landscape) and (max-height:540px) and (pointer:coarse){
-  #hud{padding:4px 8px}
-  .plateLabel{margin-bottom:2px}
-  #dock{gap:5px;padding:6px}
-  .dockGroup{padding:3px 7px 5px}
-  .dockLbl{font-size:8px;margin-bottom:3px}
-  .slot{width:52px;height:50px}
-  .slot .glyph{top:5px;height:22px}
-  .slot .glyph svg{width:24px;height:19px}
-  .slot .nm{bottom:12px;font-size:8px}
-  .slot .cost{font-size:9.5px}
-  #campBar{top:62px}
+/* ===========================================================
+   SHORT LANDSCAPE (phones) — the battlefield must win the screen.
+   A phone in landscape is only ~360px tall; the desktop-sized HUD and
+   two-row dock ate ~70% of it and buried the wall. Thin the HUD to a
+   bar and collapse the dock to ONE swipeable row so the field keeps
+   the lion's share of the height.
+   =========================================================== */
+@media (orientation: landscape) and (max-height: 480px){
+  /* --- HUD → thin bar --- */
+  #hud{gap:4px;padding:3px 6px}
+  .plate{padding:3px 7px}
+  .plate::after{inset:1px}
+  .plateLabel{font-size:8px;letter-spacing:.14em;margin-bottom:2px}
+  .castlePlate{width:min(27%,190px)}
+  .bar{height:13px} .barTxt{font-size:9px}
+  .subrow{margin-top:2px} .chip{font-size:8.5px;padding:2px 5px}
+  .cityPlate{min-width:92px;max-width:150px}
+  .cityIdx{font-size:8px} .cityName{font-size:16px} .cityTraits{margin-top:2px}
+  .resPlate{min-width:76px} .res{font-size:12px;gap:5px} .res .ico{font-size:10px;width:12px}
+  .heroPlate{min-width:86px;gap:2px}
+  .lvBadge b{font-size:14px} .bowName{font-size:8px} .xpBar{height:3px}
+  .scorePlate{display:none}
+  .hudBtns{gap:4px} .ibtn{width:30px;font-size:12px}
+  #campBar{top:50px;width:min(30%,190px)}
+
+  /* --- DOCK → one compact, swipeable row --- */
+  #dock{gap:4px;padding:4px 6px;flex-wrap:nowrap;align-items:flex-end}
+  #unitGroup{order:0;flex:1 1 auto;min-width:0}
+  #arrowGroup{order:1;flex:0 0 auto}
+  #abilityGroup{order:2;flex:0 0 auto;margin-left:0}
+  .dockGroup{padding:2px 5px 3px}
+  .dockLbl{font-size:7px;letter-spacing:.1em;margin-bottom:2px}
+  .dockRow{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+  .dockRow::-webkit-scrollbar{display:none}
+  .slot{width:46px;height:44px}
+  .slot .key{display:none}
+  .slot .glyph{top:3px;height:18px}
+  .slot .glyph svg{width:20px;height:16px}
+  .slot .nm{bottom:8px;font-size:6.5px}
+  .slot .cost{bottom:2px;font-size:8px}
+  .slot .cdTxt{font-size:18px}
+}
+
+/* even shorter (small phones, or a browser URL bar stealing height) */
+@media (orientation: landscape) and (max-height: 360px){
+  #hud{padding:2px 5px}
+  .plateLabel{font-size:7px} .cityName{font-size:14px}
+  .slot{width:42px;height:40px}
+  .dockLbl{font-size:6.5px}
 }
 
 /* ===========================================================
