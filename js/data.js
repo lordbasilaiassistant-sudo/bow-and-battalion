@@ -205,7 +205,7 @@ const SKILLS = [
 /* ============================== ARMORY GRADES ==============================
    repeatable gold purchases. cost = base * mul^level */
 const GRADES = [
-  { id:'slots',  name:'ARMY SLOTS',    icon:'plate', base:110, mul:1.30, max:22, unit:'+1 SLOT',
+  { id:'slots',  name:'ARMY SLOTS',    icon:'plate', base:110, mul:1.29, max:28, unit:'+1 SLOT',
     desc:'Field more soldiers at once. Every unit occupies slots equal to its weight.' },
   { id:'drill',  name:'INFANTRY DRILL',icon:'helm',  base:150, mul:1.35, max:14, unit:'+15% HP · +16% DMG · +6% SPD · +8% ATK SPD',
     desc:'Drill your infantry harder across the board — health, damage, march speed AND attack speed. Applies to swordsmen, shieldmen, berserkers, knights, archers, musketeers and crews.' },
@@ -223,6 +223,8 @@ const GRADES = [
     desc:'Channeled leylines feed the college. Pyromancer flame and Stormcaller lightning strike harder.' },
   { id:'siege',   name:'SIEGECRAFT',     icon:'ram',   base:240, mul:1.35, max:10, unit:'+12% WALL DAMAGE',
     desc:'Engineers school the whole army in breaking stone. Every source you own hits castles harder.' },
+  { id:'merc',    name:'MERCENARY BANNERS',icon:'coin', base:360, mul:1.27, max:9999, endless:true, unit:'+3% ALL-ARMY HP & DMG',
+    desc:'When the armouries are full, coin still talks — hire sellswords and pay your veterans to fight harder. No ceiling: every banner costs more than the last, so a deep war chest never goes to waste.' },
 ];
 const GRADE = {}; GRADES.forEach(g => GRADE[g.id] = g);
 const gradeCost = (g, lv) => Math.round(g.base * Math.pow(g.mul, lv) / 5) * 5;
@@ -426,7 +428,7 @@ function makeCity(n) {
     castleHp: Math.round(hp),
     outerHp,                                               // 0 = no forward works
     income, dmgMul: dmg,
-    hpMul: 1 + .095 * (n - 1) + .0014 * (n - 1) * (n - 1), // enemy health scales hard late
+    hpMul: 1 + .08 * (n - 1) + .0005 * (n - 1) * (n - 1),  // enemy health scales, but stays punch-through-able
     spdMul: 1 + Math.min(.65, .012 * (n - 1)),            // and they cross the field faster
     budget0: Math.round(44 + 34 * n),
     roster,
