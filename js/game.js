@@ -101,7 +101,7 @@ function recompute() {
   G.tech.forEach(id => { const t = TECHM[id]; if (t && t.fx) t.fx(m); });
 
   const gr = G.grades;
-  m.popMax = 6 + (gr.slots || 0);
+  m.popMax = 8 + (gr.slots || 0);   // bigger armies — the field can hold more of your soldiers
   m.infHp += .15 * (gr.drill || 0); m.infDmg += .16 * (gr.drill || 0);
   m.infSpd += .06 * (gr.drill || 0); m.infRate += .08 * (gr.drill || 0);
   m.vehHp += .16 * (gr.plating || 0); m.vehDmg += .17 * (gr.plating || 0);
@@ -109,6 +109,7 @@ function recompute() {
   m.healBoost += .20 * (gr.hospital || 0);
   m.mageBoost += .15 * (gr.conduit || 0);
   m.wallDmg += .12 * (gr.siege || 0);
+  m.unitHp += .03 * (gr.merc || 0); m.unitDmg += .03 * (gr.merc || 0);   // endless gold sink — small all-army boost
   m.wallHp += .11 * (gr.walls || 0);
   m.goldMul += .11 * (gr.purse || 0);
   m.rpBonus += (gr.lab || 0);
@@ -816,7 +817,7 @@ function stepCity(dt) {
   const bossOut = G.champUp && G.A.some(c => c.champ && !c.dying);
   G.foeBank += cy.income * (bossOut ? .4 : 1) * dt;
   G.foeTimer -= dt;
-  const cap = Math.min(84, 26 + G.cityN * 2.4);
+  const cap = Math.min(72, 24 + G.cityN * 1.9);
   const foeCount = G.A.reduce((n, c) => n + (c.team === -1 && alive(c) ? 1 : 0), 0);
 
   if (G.foeTimer <= 0 && foeCount < cap) {
@@ -1582,13 +1583,14 @@ function buyTech(t) {
 function buildArmory() {
   const host = $('armGrid'); host.innerHTML = '';
   GRADES.forEach(g => {
-    const lv = G.grades[g.id] || 0, maxed = lv >= g.max, cost = gradeCost(g, lv);
+    const lv = G.grades[g.id] || 0, maxed = !g.endless && lv >= g.max, cost = gradeCost(g, lv);
     const can = !maxed && G.gold >= cost;
     const d = document.createElement('div');
     d.className = 'gcard ' + (maxed ? 'max' : can ? 'can' : 'no');
-    let pips = ''; for (let i = 0; i < g.max; i++) pips += `<i class="${i < lv ? 'on' : ''}"></i>`;
+    const pipN = Math.min(g.max, 12);                       // endless grades don't render 9999 pips
+    let pips = ''; for (let i = 0; i < pipN; i++) pips += `<i class="${i < Math.min(lv, pipN) ? 'on' : ''}"></i>`;
     d.innerHTML = `<div class="gIco">${svg(g.icon)}</div><div class="gBody">
-      <div class="gName"><span>${g.name}</span><span class="gLv">${lv} / ${g.max}</span></div>
+      <div class="gName"><span>${g.name}</span><span class="gLv">${lv}${g.endless ? '' : ' / ' + g.max}</span></div>
       <div class="gEff">${g.unit}</div>
       <div class="gDesc">${g.desc}</div>
       <div class="gPips">${pips}</div>
