@@ -195,11 +195,11 @@ const BOWS = [
 
 /* hero skill lines — 1 point per level */
 const SKILLS = [
-  { id:'might', name:'MIGHT',    icon:'sword', max:20, desc:'+7% bow damage per rank.' },
-  { id:'swift', name:'QUICKNOCK',icon:'boot',  max:20, desc:'+7% draw speed per rank.' },
-  { id:'eye',   name:'DEADEYE',  icon:'eye',   max:20, desc:'+0.14x headshot multiplier and +2% critical chance per rank.' },
-  { id:'greed', name:'AVARICE',  icon:'coin',  max:20, desc:'+8% gold from every kill per rank.' },
-  { id:'lord',  name:'WARLORD',  icon:'horn',  max:20, desc:'+5% damage and +5% health for every soldier you field, per rank.' },
+  { id:'might', name:'MIGHT',    icon:'sword', endless:true, desc:'+7% bow damage per rank. No ceiling.' },
+  { id:'swift', name:'QUICKNOCK',icon:'boot',  endless:true, desc:'+7% draw speed per rank. No ceiling.' },
+  { id:'eye',   name:'DEADEYE',  icon:'eye',   endless:true, desc:'+0.14x headshot multiplier and +2% critical chance per rank (crit caps at 85%).' },
+  { id:'greed', name:'AVARICE',  icon:'coin',  endless:true, desc:'+8% gold from every kill per rank. No ceiling.' },
+  { id:'lord',  name:'WARLORD',  icon:'horn',  endless:true, desc:'+5% damage and +5% health for every soldier you field, per rank. No ceiling.' },
 ];
 
 /* ============================== ARMORY GRADES ==============================
@@ -388,13 +388,17 @@ function makeCity(n) {
     traits.push(pool.splice(idx, 1)[0]);
   }
 
-  const s = Math.pow(n, 1.16);
+  const s = Math.pow(n, 1.16), d1 = n - 1, cube = d1 * d1 * d1;
   let hp = 580 + 420 * s;                                  // castle stays a real wall — the army breaks it
   let income = 1.0 + .6 * n + n * n * .028;                // deeper coffers → the road fields bigger armies
-  let dmg = 1 + .08 * (n - 1) + .0007 * (n - 1) * (n - 1); // enemy damage bites harder the deeper you go
+  /* HP & damage carry an endless cubic tail: negligible early, it turns the
+     deep road into a real treadmill so an endlessly-upgraded army is never safe. */
+  let dmg = 1 + .08 * d1 + .0007 * d1 * d1 + .0000035 * cube;
   let turret = n >= 6 ? 1 : 0;
   if (n >= 15) turret = 2;
   if (n >= 26) turret = 3;
+  if (n >= 40) turret = 4;
+  if (n >= 60) turret = 5;
   traits.forEach(t => {
     if (t.hp) hp *= t.hp;
     if (t.income) income *= t.income;
@@ -428,8 +432,8 @@ function makeCity(n) {
     castleHp: Math.round(hp),
     outerHp,                                               // 0 = no forward works
     income, dmgMul: dmg,
-    hpMul: 1 + .08 * (n - 1) + .0005 * (n - 1) * (n - 1),  // enemy health scales, but stays punch-through-able
-    spdMul: 1 + Math.min(.65, .012 * (n - 1)),            // and they cross the field faster
+    hpMul: 1 + .08 * d1 + .0005 * d1 * d1 + .000007 * cube, // scales without bound, but stays punch-through-able for a while
+    spdMul: 1 + Math.min(1.0, .012 * d1),                 // cross the field faster; deep cities close fast
     budget0: Math.round(44 + 34 * n),
     roster,
     turrets: turret,

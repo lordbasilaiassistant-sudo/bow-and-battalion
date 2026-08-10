@@ -119,7 +119,7 @@ function recompute() {
   const sk = G.skills;
   m.arrowDmg += .07 * (sk.might || 0);
   m.drawSpeed += .07 * (sk.swift || 0);
-  m.hs += .14 * (sk.eye || 0); m.crit += .02 * (sk.eye || 0);
+  m.hs += .14 * (sk.eye || 0); m.crit = Math.min(.85, m.crit + .02 * (sk.eye || 0));
   m.goldMul += .08 * (sk.greed || 0);
   m.unitDmg += .05 * (sk.lord || 0); m.unitHp += .05 * (sk.lord || 0);
 
@@ -819,7 +819,7 @@ function stepCity(dt) {
   const bossOut = G.champUp && G.A.some(c => c.champ && !c.dying);
   G.foeBank += cy.income * (bossOut ? .4 : 1) * dt;
   G.foeTimer -= dt;
-  const cap = Math.min(72, 24 + G.cityN * 1.9);
+  const cap = Math.min(88, 24 + G.cityN * 1.7);
   const foeCount = G.A.reduce((n, c) => n + (c.team === -1 && alive(c) ? 1 : 0), 0);
 
   if (G.foeTimer <= 0 && foeCount < cap) {
@@ -939,8 +939,8 @@ function startCity(n) {
   ABILITIES.forEach(a => G.abilCd[a.id] = 4);
   G.foeTurrets = [];
   const base = GROUND + 6;
-  const spots = [[EN_WALL + 49, base - 224], [EN_WALL + 133, base - 302]];
-  for (let i = 0; i < cy.turrets; i++) G.foeTurrets.push({ x: spots[i % 2][0], y: spots[i % 2][1], aim: Math.PI + .3, recoil: 0, cd: 3 });
+  const spots = [[EN_WALL + 49, base - 224], [EN_WALL + 133, base - 302], [EN_WALL + 210, base - 250], [EN_WALL + 92, base - 268], [EN_WALL + 170, base - 320]];
+  for (let i = 0; i < cy.turrets; i++) { const sp = spots[i % spots.length]; G.foeTurrets.push({ x: sp[0], y: sp[1], aim: Math.PI + .3, recoil: 0, cd: 3 }); }
 
   G.phase = 'battle'; G.paused = false; $('pause').hidden = true;
   $('inter').hidden = true; $('over').hidden = true;
@@ -1643,12 +1643,13 @@ function buildHero() {
   $('heroSp').textContent = G.sp + ' UNSPENT';
   const host = $('skillGrid'); host.innerHTML = '';
   SKILLS.forEach(s => {
-    const r = G.skills[s.id] || 0, can = G.sp > 0 && r < s.max;
+    const r = G.skills[s.id] || 0, can = G.sp > 0 && (s.endless || r < s.max);
     const d = document.createElement('div');
     d.className = 'sk ' + (can ? 'can' : '');
-    let pips = ''; for (let i = 0; i < s.max; i++) pips += `<i class="${i < r ? 'on' : ''}"></i>`;
+    const pipN = s.endless ? 10 : s.max;
+    let pips = ''; for (let i = 0; i < pipN; i++) pips += `<i class="${i < Math.min(r, pipN) ? 'on' : ''}"></i>`;
     d.innerHTML = `<div class="skIco">${svg(s.icon)}</div><div style="flex:1;min-width:0">
-      <div class="skN"><span>${s.name}</span><span class="skR">${r} / ${s.max}</span></div>
+      <div class="skN"><span>${s.name}</span><span class="skR">${s.endless ? 'RANK ' + r + ' · ∞' : r + ' / ' + s.max}</span></div>
       <div class="skD">${s.desc}</div><div class="skPips">${pips}</div></div>`;
     if (can) d.onclick = () => { G.sp--; G.skills[s.id] = r + 1; recompute(); SFX.buy(); toast(s.name + ' → ' + (r + 1), 'tech'); buildHero(); syncHud(); save(); };
     host.appendChild(d);
