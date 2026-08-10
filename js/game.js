@@ -14,6 +14,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 
 const $ = id => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d', { alpha: false });
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (IS_TOUCH) document.body.classList.add('touch');
 let VS = 1, VOX = 0, VOY = 0;             // view scale / offset (letterbox)
 
 function resize() {
@@ -907,7 +909,9 @@ function startCity(n) {
   $('inter').hidden = true; $('over').hidden = true;
   $('campBar').classList.add('on');
   banner(cy.name.toUpperCase(), (cy.ep ? cy.ep.toUpperCase() + ' · ' : '') + 'CITY ' + n);
-  if (n === 1) setTimeout(() => toast('MUSTER SWORDSMEN [Q] AND ARCHERS [A] — THEY MARCH, YOU SHOOT', 'tech'), 2600);
+  if (n === 1) setTimeout(() => toast(IS_TOUCH
+    ? 'TAP MUSTER TO RAISE SWORDSMEN & ARCHERS — THEY MARCH, YOU SHOOT'
+    : 'MUSTER SWORDSMEN [Q] AND ARCHERS [A] — THEY MARCH, YOU SHOOT', 'tech'), 2600);
   SFX.horn();
   syncHud(); syncDock(); buildTech(); buildArmory(); buildHero();
   save();
@@ -1667,28 +1671,48 @@ function applySave(s) {
 /* =========================================================================
    INPUT
    ========================================================================= */
-function fieldClick(e) {
+/* Unified pointer input — one path for mouse, pen and touch.
+   Touch aims from the fingertip but lifts the reticle above it so the
+   finger never hides the target it is drawing on. */
+const TOUCH_LIFT = 48;
+let drawPid = null;
+function aim(e) {
   const w = toWorld(e.clientX, e.clientY);
-  if (G.armed) { useAbility(G.armed, w.x); return true; }
-  return false;
+  if (e.pointerType === 'touch') w.y -= TOUCH_LIFT;
+  G.mouse.x = w.x; G.mouse.y = w.y;
+  return w;
 }
-cv.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
+cv.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
   SFX.unlock();
   if (G.phase !== 'battle' || G.paused) return;
-  if (fieldClick(e)) return;
+  e.preventDefault();
+  const w = aim(e);
+  if (G.armed) { useAbility(G.armed, w.x); return; }
+  if (drawPid !== null) return;              // one draw at a time
+  drawPid = e.pointerId;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) { }
   G.drawing = true; G.charge = 0;
+}, { passive: false });
+addEventListener('pointermove', e => {
+  if (drawPid !== null && e.pointerId !== drawPid && e.pointerType === 'touch') return;
+  aim(e);
 });
-addEventListener('mouseup', e => {
-  if (e.button !== 0) return;
+addEventListener('pointerup', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (drawPid !== null && e.pointerId !== drawPid) return;
   if (G.drawing) {
+    aim(e);
     const a = ARROWS[G.arrow];
     if (a.cost && G.gold < a.cost) { toast('NO GOLD FOR ' + a.name + ' — LOOSING A WAR SHAFT', 'bad'); G.arrow = 0; syncDock(); }
     heroShoot(); syncHud(); syncDock();
   }
-  G.drawing = false;
+  G.drawing = false; drawPid = null;
 });
-addEventListener('mousemove', e => { const w = toWorld(e.clientX, e.clientY); G.mouse.x = w.x; G.mouse.y = w.y; });
+addEventListener('pointercancel', e => {
+  if (drawPid !== null && e.pointerId !== drawPid) return;
+  G.drawing = false; G.charge = 0; drawPid = null;   // interrupted — abort without loosing
+});
 cv.addEventListener('contextmenu', e => { e.preventDefault(); if (G.armed) { G.armed = null; syncDock(); } });
 
 const UNIT_KEYS = {}; UNITS.forEach(u => UNIT_KEYS[u.key] = u.id);
