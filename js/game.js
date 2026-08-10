@@ -53,6 +53,7 @@ function toWorld(cx, cy) {
    STATE
    ========================================================================= */
 const HERO = { x: 222, y: 586 };
+const FIELD_SPD = 1.32;                    // global march tempo — the field crosses faster, less trudging
 
 const G = {
   phase: 'title',            // title | battle | inter | over
@@ -91,7 +92,7 @@ function recompute() {
   const m = {
     arrowDmg: 0, drawSpeed: 1, hs: 2.2, crit: .03, refund: 0, predict: 0,
     goldMul: 1, rpBonus: 0, popMax: 6,
-    unitHp: 0, unitDmg: 0, infHp: 0, infDmg: 0, vehHp: 0, vehDmg: 0, vehSpd: 0, vehRate: 0,
+    unitHp: 0, unitDmg: 0, infHp: 0, infDmg: 0, infSpd: 0, infRate: 0, vehHp: 0, vehDmg: 0, vehSpd: 0, vehRate: 0,
     phalanx: 0, regenU: 0, splashR: 0, splashD: 0, vehSplash: 0,
     wallHp: 0, wallRegen: 0, turrets: 0, turretRate: 0, shieldMax: 0, thorns: 0,
     mageBoost: 0, healBoost: 0, wallDmg: 0,
@@ -101,8 +102,10 @@ function recompute() {
 
   const gr = G.grades;
   m.popMax = 6 + (gr.slots || 0);
-  m.infHp += .15 * (gr.drill || 0); m.infDmg += .12 * (gr.drill || 0);
-  m.vehHp += .16 * (gr.plating || 0); m.vehDmg += .13 * (gr.plating || 0);
+  m.infHp += .15 * (gr.drill || 0); m.infDmg += .16 * (gr.drill || 0);
+  m.infSpd += .06 * (gr.drill || 0); m.infRate += .08 * (gr.drill || 0);
+  m.vehHp += .16 * (gr.plating || 0); m.vehDmg += .17 * (gr.plating || 0);
+  m.vehSpd += .06 * (gr.plating || 0); m.vehRate += .08 * (gr.plating || 0);
   m.healBoost += .20 * (gr.hospital || 0);
   m.mageBoost += .15 * (gr.conduit || 0);
   m.wallDmg += .12 * (gr.siege || 0);
@@ -139,8 +142,8 @@ function spawnUnit(def) {
   const c = {
     team: 1, def, id: def.id, x: MY_GATE - 16, y: def.fly ? 470 + rnd(-30, 30) : GROUND + lane, stance: def.stance,
     hp: def.hp * hpMul, max: def.hp * hpMul,
-    dmg: def.dmg * dmgMul, rate: def.rate / (veh ? 1 + m.vehRate : 1),
-    range: def.range, spd: def.spd * (veh ? 1 + m.vehSpd : 1),
+    dmg: def.dmg * dmgMul, rate: def.rate / (1 + (veh ? m.vehRate : m.infRate)),
+    range: def.range, spd: def.spd * (1 + (veh ? m.vehSpd : m.infSpd)),
     armor: def.armor, r: def.r * 1.15, pop: def.pop, veh, s: bodyScale(def),
     ph: rnd(TAU), cd: rnd(.1, .5), atk: 0, recoil: 0, dying: 0, charge: 0,
     fly: def.fly ? 1 : 0, burn: 0, burnDps: 0, hurtT: 0, sep: lane, bufT: 0,
@@ -153,7 +156,7 @@ function spawnUnit(def) {
 
 function spawnFoe(fd, champ) {
   const cy = G.city;
-  let hp = fd.hp * cy.hpMul, dmg = fd.dmg * cy.dmgMul, r = fd.r * 1.15, spd = fd.spd, s = bodyScale(fd);
+  let hp = fd.hp * cy.hpMul, dmg = fd.dmg * cy.dmgMul, r = fd.r * 1.15, spd = fd.spd * (cy.spdMul || 1), s = bodyScale(fd);
   let armor = fd.armor;
   let rate = fd.rate;
   if (champ) { hp *= champ.hp; dmg *= champ.dmg; r = champ.r; spd *= champ.spd; s = champ.r / 13; armor = Math.min(armor, .30); rate *= 1.6; }
@@ -316,7 +319,7 @@ function stepCombatant(c, dt) {
   if (move !== 0) {
     const mobbing = (wallX - c.x) * dirF < 150 || (e && gapTo(c, e) < 130);   // storming a gate or a scrum: pack in
     if (!mobbing && move > 0 === (dirF > 0) && blockedAhead(c, c.r * 2 + 12)) move = 0;
-    c.x += move * c.spd * spdM * dt;
+    c.x += move * c.spd * spdM * FIELD_SPD * dt;
     c.ph += dt * (c.veh ? 6 : 9) * Math.abs(move) * (c.spd / 42);
     if (!c.fly) c.x = clamp(c.x, MY_WALL - 30, EN_WALL + 30);
   } else if (c.stance !== 'air') c.ph += dt * .6;
@@ -696,6 +699,22 @@ function kill(c, quiet) {
 
 function damageWall(tgt, d, wallX, isMine) {
   if (tgt.hp <= 0) return;
+  /* forward works soak the whole hit until they're breached — the keep is safe behind them */
+  if (tgt === G.foeWall && G.foeOuter && G.foeOuter.hp > 0) {
+    const before = G.foeOuter.hp;
+    G.foeOuter.hp = Math.max(0, G.foeOuter.hp - d);
+    const ox = EN_WALL - 70;
+    fxSpark(ox, GROUND - rnd(30, 100), 6, '#e2a878', 200, .3);
+    fxDebris(ox, GROUND - rnd(30, 90), 3, '#3a3630', GROUND + 20);
+    ftext(ox - 34, GROUND - 130, '-' + Math.round(d), '#ffd9a0', 19);
+    if (d > 40) shake(3);
+    if (before > 0 && G.foeOuter.hp <= 0) {
+      banner('OUTER WORKS BREACHED', G.city.name.toUpperCase() + ' — STRIKE THE KEEP');
+      SFX.horn(); shake(12); flashScreen(.16, '#ffb060');
+      fxExplosion(ox, GROUND - 30, 90, { col: '210,150,90' });
+    }
+    return;
+  }
   if (isMine && G.shield > 0) {
     const abs = Math.min(G.shield, d); G.shield -= abs; d -= abs;
     fxRing(160, GROUND - 60, 232, 'rgba(150,240,255,.7)', .3, 2);
@@ -797,11 +816,11 @@ function stepCity(dt) {
   const bossOut = G.champUp && G.A.some(c => c.champ && !c.dying);
   G.foeBank += cy.income * (bossOut ? .4 : 1) * dt;
   G.foeTimer -= dt;
-  const cap = Math.min(64, 24 + G.cityN * 2);
+  const cap = Math.min(84, 26 + G.cityN * 2.4);
   const foeCount = G.A.reduce((n, c) => n + (c.team === -1 && alive(c) ? 1 : 0), 0);
 
   if (G.foeTimer <= 0 && foeCount < cap) {
-    G.foeTimer = clamp(1.5 - G.cityN * .04, .34, 1.5);
+    G.foeTimer = clamp(1.4 - G.cityN * .045, .26, 1.4);
     pickFoe(cy);
   }
 
@@ -809,8 +828,8 @@ function stepCity(dt) {
      surge harder and more often; unprepared armies get rolled. */
   G.surgeT -= dt;
   if (G.surgeT <= 0) {
-    G.surgeT = clamp(40 - G.cityN * 1.1, 16, 40);
-    const burst = Math.min(2 + Math.floor(G.cityN / 2), 12);
+    G.surgeT = clamp(38 - G.cityN * 1.1, 14, 38);
+    const burst = Math.min(3 + Math.floor(G.cityN / 2), 16);
     let sent = 0;
     for (let i = 0; i < burst && foeCount + sent < cap + 6; i++) { if (!pickFoe(cy)) break; sent++; }
     if (sent >= 3) { banner('ASSAULT', cy.name.toUpperCase() + ' EMPTIES ITS GATES'); SFX.horn(); shake(6); }
@@ -873,8 +892,8 @@ function refreshUnit(c) {
   const dmgMul = 1 + m.unitDmg + (veh ? m.vehDmg : m.infDmg);
   c.max = def.hp * hpMul; c.hp = c.max;
   c.dmg = def.dmg * dmgMul;
-  c.rate = def.rate / (veh ? 1 + m.vehRate : 1);
-  c.spd = def.spd * (veh ? 1 + m.vehSpd : 1);
+  c.rate = def.rate / (1 + (veh ? m.vehRate : m.infRate));
+  c.spd = def.spd * (1 + (veh ? m.vehSpd : m.infSpd));
   c.burn = 0; c.burnDps = 0; c.dying = 0; c.cd = rnd(.2, .8); c.atk = 0; c.hurtT = 0;
 }
 
@@ -908,6 +927,7 @@ function startCity(n) {
   G.foeBank = cy.budget0; G.foeTimer = 1.2; G.champUp = false; G.champTimer = 0;
   G.surgeT = n === 1 ? 55 : 40;
   G.foeWall = { hp: cy.castleHp, max: cy.castleHp };
+  G.foeOuter = cy.outerHp ? { hp: cy.outerHp, max: cy.outerHp } : null;
   recompute();
   G.wall.hp = G.wall.max;
   G.shield = G.mods.shieldMax;
@@ -1383,8 +1403,11 @@ function syncHud() {
     $('cityName').textContent = G.city.name;
     $('cityName').title = G.city.title;
     $('cityTraits').innerHTML = G.city.traits.map(t => `<i title="${t.note}">${t.name.split(' ')[0]}</i>`).join('');
-    $('campName').textContent = G.city.name.toUpperCase() + ' — WALLS';
-    $('campBarFill').style.width = clamp(G.foeWall.hp / G.foeWall.max, 0, 1) * 100 + '%';
+    const outer = G.foeOuter && G.foeOuter.hp > 0;
+    $('campName').textContent = G.city.name.toUpperCase() + (outer ? ' — OUTER WORKS' : ' — WALLS');
+    const frac = outer ? G.foeOuter.hp / G.foeOuter.max : G.foeWall.hp / G.foeWall.max;
+    $('campBarFill').style.width = clamp(frac, 0, 1) * 100 + '%';
+    $('campBar').classList.toggle('outer', outer);
   }
   $('popcap').textContent = G.pop + ' / ' + G.mods.popMax + ' SLOTS';
 }
