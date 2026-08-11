@@ -54,6 +54,7 @@ function toWorld(cx, cy) {
    ========================================================================= */
 const HERO = { x: 222, y: 586 };
 const FIELD_SPD = 1.32;                    // global march tempo — the field crosses faster, less trudging
+const AUTO_SPEED = 1.7;                    // auto-battle fast-forward — blast through the easy stretch
 
 const G = {
   phase: 'title',            // title | battle | inter | over
@@ -1027,9 +1028,11 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
   if (CAM.hitstop > 0) { CAM.hitstop -= dt; dt *= .12; }
+  if (G.auto && G.phase === 'battle') dt = Math.min(.10, dt * AUTO_SPEED);   // fast-forward the grind
   G.dt = dt;
 
   if (G.phase === 'battle' && !G.paused) {
+    if (G.auto) autoBattle(dt);
     G.t += dt; G.levelT += dt;
     stepHero(dt);
     G.windT += dt;
@@ -1052,6 +1055,9 @@ function frame(now) {
 
     if (G.foeWall.hp <= 0) cityFalls();
     else if (G.wall.hp <= 0) defeat();
+  } else if (G.phase === 'inter' && G.auto && !$('inter').hidden) {
+    G.autoMarchT = (G.autoMarchT || 0) + dt;   // auto-march on: linger a beat on the spoils, then advance
+    if (G.autoMarchT > 1.5) { G.autoMarchT = 0; nextCity(); }
   }
 
   partsUpdate(dt); ftextUpdate(dt); camUpdate(dt);
@@ -1769,6 +1775,7 @@ addEventListener('keydown', e => {
   }
   if (k === 'T') { if ($('tech').hidden) { if (G.phase === 'battle' || G.phase === 'inter') openCouncil(); } else closeCouncil(); return; }
   if (k === 'M') { const m = SFX.toggle(); toast(m ? 'SOUND OFF' : 'SOUND ON'); return; }
+  if (k === 'Y') { toggleAuto(); return; }
   if (k === ' ') {
     e.preventDefault();
     if (G.phase === 'inter' && !$('inter').hidden) nextCity();
@@ -1786,6 +1793,58 @@ function togglePause() {
   G.paused = !G.paused;
   $('pause').hidden = !G.paused;
   if (!G.paused) $('tech').hidden = true;
+}
+
+/* =========================================================================
+   AUTO-BATTLE — hands-off musters, commands, upgrades and marches on.
+   Runs a few times a second while auto is engaged; the frame loop also
+   fast-forwards the sim so easy cities blast by.
+   ========================================================================= */
+let autoAcc = 0;
+function autoBattle(dt) {
+  autoAcc += dt; if (autoAcc < .3) return; autoAcc = 0;
+  let changed = false;
+
+  /* spend hero skill points as they arrive (round-robin across the lines) */
+  if (G.sp > 0) { const s = SKILLS[(G.heroLv + G.sp) % SKILLS.length]; G.skills[s.id] = (G.skills[s.id] || 0) + 1; G.sp--; changed = true; }
+
+  /* fill the army with the best affordable comp (bypasses the tap-throttle) */
+  const pri = ['knight', 'htank', 'mech', 'ram', 'arty', 'zerk', 'caller', 'musket', 'sword', 'shield', 'archer', 'banner', 'medic', 'pyro', 'ltank', 'crew', 'corsair'];
+  for (const id of pri) {
+    const u = UNIT[id]; if (!u || !G.mods.unit[id]) continue; let t = 0;
+    while (G.pop + u.pop <= G.mods.popMax && G.gold >= u.cost && t++ < 6) {
+      const b = G.pop; G.deployCd = 0; deploy(id); if (G.pop === b) break;
+    }
+  }
+
+  /* commands off cooldown */
+  if (G.mods.abil.repair && !(G.abilCd.repair > 0) && G.wall.hp / G.wall.max < .6) useAbility('repair');
+  if (G.mods.abil.rally && !(G.abilCd.rally > 0)) useAbility('rally');
+  const foes = G.A.filter(c => c.team === -1 && alive(c));
+  if (foes.length > 5) {
+    const xs = foes.map(c => c.x).sort((a, b) => a - b), mid = xs[xs.length >> 1];
+    if (G.mods.abil.barrage && !(G.abilCd.barrage > 0)) useAbility('barrage', mid);
+    else if (G.mods.abil.napalm && !(G.abilCd.napalm > 0)) useAbility('napalm', mid);
+  }
+
+  /* pour the surplus into upgrades, keeping a reserve to replace fallen troops */
+  const reserve = 400 + G.cityN * 50; let buys = 0;
+  for (const g of GRADES) {
+    if (buys >= 8) break; const capped = !g.endless;
+    while (buys < 8) {
+      const lv = G.grades[g.id] || 0; if (capped && lv >= g.max) break;
+      const cost = gradeCost(g, lv); if (G.gold - cost <= reserve) break;
+      G.gold -= cost; G.grades[g.id] = lv + 1; changed = true; buys++;
+    }
+  }
+  if (changed) recompute();
+}
+
+function toggleAuto() {
+  G.auto = !G.auto;
+  $('btnAuto').classList.toggle('on', G.auto);
+  toast(G.auto ? 'AUTO-BATTLE ENGAGED' : 'AUTO-BATTLE OFF', G.auto ? 'good' : '');
+  if (G.auto && G.phase === 'inter') G.autoMarchT = 1.2;   // advance shortly
 }
 
 /* =========================================================================
@@ -1829,6 +1888,7 @@ $('btnNext').onclick = nextCity;
 $('btnPause').onclick = togglePause;
 $('btnResume').onclick = togglePause;
 $('btnMute').onclick = () => { const m = SFX.toggle(); $('btnMute').style.opacity = m ? .4 : 1; toast(m ? 'SOUND OFF' : 'SOUND ON'); };
+$('btnAuto').onclick = toggleAuto;
 $('btnAbandon').onclick = () => { localStorage.removeItem('bowbat_save'); location.reload(); };
 $('btnRetry').onclick = () => location.reload();
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => { switchTab(t.dataset.tab); SFX.ui(); });
