@@ -55,6 +55,20 @@ function toWorld(cx, cy) {
 const HERO = { x: 222, y: 586 };
 const FIELD_SPD = 1.32;                    // global march tempo — the field crosses faster, less trudging
 const AUTO_SPEED = 1.7;                    // auto-battle fast-forward — blast through the easy stretch
+/* how hard the enemy answers your total investment. HP scales more than damage
+   (tanky, so fights last and skill matters) and damage less (so you're not
+   one-shot). Turn these down if deep cities feel too spongy/deadly. */
+const FOE_HP_K = 0.035;
+const FOE_DMG_K = 0.015;
+/* one power point ≈ one damage-grade rank; support/economy ranks count less */
+function foePower() {
+  const g = G.grades || {}, s = G.skills || {};
+  const grd = (g.drill || 0) + (g.plating || 0) + (g.merc || 0) + (g.siege || 0)
+    + (g.walls || 0) * .5 + (g.purse || 0) * .4 + (g.hospital || 0) * .4
+    + (g.conduit || 0) * .5 + (g.slots || 0) * .6 + (g.lab || 0) * .3;
+  const skl = Object.values(s).reduce((a, b) => a + (b || 0), 0);
+  return grd + skl * .7 + (G.bow || 0) * 3 + (G.heroLv || 0) * .2;
+}
 
 const G = {
   phase: 'title',            // title | battle | inter | over
@@ -125,6 +139,11 @@ function recompute() {
   m.unitDmg += .05 * (sk.lord || 0); m.unitHp += .05 * (sk.lord || 0);
 
   G.mods = m;
+  /* the road answers your arsenal: enemies, keeps and their guns scale with how
+     much you've upgraded, so endless power never means zero challenge. */
+  const pw = foePower();
+  G.foeHpMul = 1 + pw * FOE_HP_K;
+  G.foeDmgMul = 1 + pw * FOE_DMG_K;
   const newMax = Math.round(1000 * (1 + m.wallHp));
   if (newMax !== G.wall.max) { const f = G.wall.hp / G.wall.max; G.wall.max = newMax; G.wall.hp = Math.min(newMax, Math.round(newMax * f)); }
   if (G.turretAim.length < m.turrets) { G.turretAim.push(-.4); G.turretRecoil.push(0); G.turretCd.push(0); }
@@ -160,7 +179,7 @@ function spawnUnit(def) {
 
 function spawnFoe(fd, champ) {
   const cy = G.city;
-  let hp = fd.hp * cy.hpMul, dmg = fd.dmg * cy.dmgMul, r = fd.r * 1.15, spd = fd.spd * (cy.spdMul || 1), s = bodyScale(fd);
+  let hp = fd.hp * cy.hpMul * (G.foeHpMul || 1), dmg = fd.dmg * cy.dmgMul * (G.foeDmgMul || 1), r = fd.r * 1.15, spd = fd.spd * (cy.spdMul || 1), s = bodyScale(fd);
   let armor = fd.armor;
   let rate = fd.rate;
   if (champ) { hp *= champ.hp; dmg *= champ.dmg; r = champ.r; spd *= champ.spd; s = champ.r / 13; armor = Math.min(armor, .30); rate *= 1.6; }
@@ -425,7 +444,11 @@ function beamHit(c, sy) {
     if (o.team === c.team || !alive(o)) continue;
     if (Math.abs(o.y - sy) < 46 && (o.x - c.x) * c.team > 0) list.push(o);
   }
-  list.forEach(o => hurt(o, c.dmg, { pierce: 1, src: c.x }));
+  /* a railgun punches a lane, it doesn't delete the whole field — cap the
+     bodies it pierces (nearest first) so it can't solo an entire army. */
+  list.sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x));
+  const BEAM_PIERCE = 8;
+  for (let i = 0; i < list.length && i < BEAM_PIERCE; i++) hurt(list[i], c.dmg * Math.pow(.9, i), { pierce: 1, src: c.x });
   const wallX = c.team === 1 ? EN_WALL : MY_WALL;
   if (Math.abs(sy - (GROUND - 60)) < 120) damageWall(c.team === 1 ? G.foeWall : G.wall, c.dmg * .5 * (c.team === 1 ? 1 + G.mods.wallDmg : 1), wallX, c.team === -1);
 }
@@ -794,7 +817,7 @@ function stepTurrets(dt) {
       t.aim = lerp(t.aim, a, dt * 5);
       if (t.cd <= 0) {
         t.cd = 1.9; t.recoil = 1;
-        const dmg = 26 + G.cityN * 3;
+        const dmg = (26 + G.cityN * 3) * (G.foeDmgMul || 1);
         G.P.push({ team: -1, dmg, x: t.x + Math.cos(a) * 22, y: t.y + Math.sin(a) * 22, vx: Math.cos(a) * 820, vy: Math.sin(a) * 820, g: 120, k: 'bolt', r: 3, splash: 26 });
         SFX.gun();
       }
@@ -930,9 +953,10 @@ function startCity(n) {
 
   G.foeBank = cy.budget0; G.foeTimer = 1.2; G.champUp = false; G.champTimer = 0;
   G.surgeT = n === 1 ? 55 : 40;
-  G.foeWall = { hp: cy.castleHp, max: cy.castleHp };
-  G.foeOuter = cy.outerHp ? { hp: cy.outerHp, max: cy.outerHp } : null;
-  recompute();
+  recompute();                                   // sets G.foeHpMul from current upgrades
+  const keepHp = Math.round(cy.castleHp * G.foeHpMul);
+  G.foeWall = { hp: keepHp, max: keepHp };
+  G.foeOuter = cy.outerHp ? { hp: Math.round(cy.outerHp * G.foeHpMul), max: Math.round(cy.outerHp * G.foeHpMul) } : null;
   G.wall.hp = G.wall.max;
   G.shield = G.mods.shieldMax;
   G.wind = rnd(-2.6, 2.6); G.windT = 0;
