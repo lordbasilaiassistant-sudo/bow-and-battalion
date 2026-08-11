@@ -127,9 +127,12 @@ function ftextUpdate(dt) {
 
 /* ============================= CAMERA / SHAKE ============================= */
 const CAM = { sx: 0, sy: 0, mag: 0, rot: 0, zoom: 1, hitstop: 0, tint: null, tintA: 0 };
-function shake(mag, rot = 0) { CAM.mag = Math.min(48, CAM.mag + mag); if (rot) CAM.rot = Math.min(.05, CAM.rot + rot); }
+/* comfort: camera shake and full-screen flashes are damped hard at the source,
+   so bombs/booms/impacts read without the jarring shake or bright strobing. */
+const SHAKE_SCALE = 0.16, FLASH_SCALE = 0.5;
+function shake(mag, rot = 0) { CAM.mag = Math.min(14, CAM.mag + mag * SHAKE_SCALE); if (rot) CAM.rot = Math.min(.02, CAM.rot + rot * SHAKE_SCALE); }
 function hitstop(t) { CAM.hitstop = Math.max(CAM.hitstop, t); }
-function flashScreen(a, col) { CAM.tintA = Math.max(CAM.tintA, a); CAM.tint = col || '#fff'; }
+function flashScreen(a, col) { CAM.tintA = Math.max(CAM.tintA, a * FLASH_SCALE); CAM.tint = col || '#fff'; }
 function camUpdate(dt) {
   CAM.mag *= Math.pow(.0035, dt); CAM.rot *= Math.pow(.002, dt);
   if (CAM.mag < .05) CAM.mag = 0;
