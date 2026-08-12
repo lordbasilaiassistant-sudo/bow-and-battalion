@@ -248,6 +248,7 @@ function stepCombatant(c, dt) {
   if (c.dying > 0) { c.dying += dt; return; }
   c.hurtT = Math.max(0, c.hurtT - dt);
   c.bufT = Math.max(0, (c.bufT || 0) - dt);
+  c.combatT = Math.max(0, (c.combatT || 0) - dt);   // seconds since the last blow given or taken
   if (c.batter > 0) { c.batterT -= dt; if (c.batterT <= 0) { c.batter--; c.batterT = .55; } }
   c.recoil = Math.max(0, c.recoil - dt * 5);
   c.atk = Math.max(0, c.atk - dt * 3.6);
@@ -259,7 +260,10 @@ function stepCombatant(c, dt) {
     if (chance(dt * 14)) fxFire(c.x + rnd(-6, 6), c.y - rnd(6, 30), 1, 6, .35);
     if (c.dying) return;
   }
-  if (c.team === 1 && G.mods.regenU && !c.veh && c.hp < c.max) c.hp = Math.min(c.max, c.hp + c.max * G.mods.regenU * dt);
+  /* VETERAN CORPS mends "out of combat" — it used to tick straight through a
+     melee, healing a swordsman while he was being cut down */
+  if (c.team === 1 && G.mods.regenU && !c.veh && !c.combatT && c.hp < c.max)
+    c.hp = Math.min(c.max, c.hp + c.max * G.mods.regenU * dt);
 
   const spdM = (c.team === 1 && G.rally > 0 ? 1.45 : 1);
   const wallX = c.team === 1 ? EN_WALL : MY_WALL;
@@ -270,7 +274,10 @@ function stepCombatant(c, dt) {
 
   if (c.stance === 'melee') {
     if (e && gapTo(c, e) <= c.range * .8) firing = e;
-    else if ((wallX - c.x) * dirF <= c.r + 34 && (!e || gapTo(c, e) > 260)) firing = 'wall';
+    /* standing at the gate: swing at it. Anything in actual reach already won
+       the branch above — a foe loitering 200px back must not freeze the line
+       (it used to, which paralysed the Siege Ram permanently). */
+    else if ((wallX - c.x) * dirF <= c.r + 34) firing = 'wall';
     else move = dirF;
   } else if (c.stance === 'armor') {
     if (e && gapTo(c, e) <= c.range * .88) { firing = e; if (gapTo(c, e) > c.range * .55) move = dirF * .35; }
@@ -328,8 +335,12 @@ function stepCombatant(c, dt) {
     }
   } else if (c.stance === 'air') {
     const t = e || null;
-    if (t && gapTo(c, t) <= c.range * .9) { firing = t; move = 0; }
-    else if (t) move = sign(t.x - c.x);                       // chase in either direction
+    /* strafing run: against a GROUND target only the horizontal gap counts — a
+       gunship kills what it flies over. Measuring the true diagonal put every
+       ground unit ~250px away, i.e. permanently out of a 270 gun. */
+    const gap = t ? (t.fly ? gapTo(c, t) : Math.abs(t.x - c.x) - (c.r + t.r)) : Infinity;
+    if (t && gap <= c.range * .9) { firing = t; move = 0; }
+    else if (t) move = Math.abs(t.x - c.x) < 6 ? 0 : sign(t.x - c.x);   // chase in either direction
     else if ((wallX - c.x) * dirF <= c.range * .7) firing = 'wall';
     else move = dirF;
     c.x = clamp(c.x, 70, W - 70);                             // never fly off the field
@@ -337,6 +348,7 @@ function stepCombatant(c, dt) {
   }
 
   c.engaged = !!firing;
+  if (firing) c.combatT = 2.5;
 
   /* march */
   if (move !== 0) {
@@ -399,8 +411,10 @@ function shoot(c, tgt) {
   const sx = c.x + (c.r + 4) * c.team, sy = c.y - (c.veh ? 26 : 28) * (c.s || 1);
   const tx = tgt.x !== undefined ? tgt.x : tgt.x, ty = (tgt.y !== undefined ? tgt.y : GROUND) - (tgt.wall ? 0 : 20);
   const d = c.def;
+  /* NOTE: splash is the RAW blast radius. boom() owns the Heavy Munitions
+     bonus — applying it here too squared it (+35% became +82%). */
   const P = { team: c.team, dmg: dmgOf(c) * (d.fireF ? 1 + G.mods.mageBoost : 1), x: sx, y: sy, r: 3, src: c,
-    splash: (d.splash || 0) * (1 + G.mods.splashR * (c.team === 1 ? 1 : 0)) * (c.champ ? .6 : 1),
+    splash: (d.splash || 0) * (c.champ ? .6 : 1),
     wallMul: c.champ ? .5 : 1, fireF: d.fireF ? 1 : 0 };
 
   if (d.beam) {                                   /* rail walker */
@@ -439,6 +453,7 @@ function shoot(c, tgt) {
 }
 
 function beamHit(c, sy) {
+  const dmg = dmgOf(c);                    // rally + banner buff the railgun like every other gun
   const list = [];
   for (const o of G.A) {
     if (o.team === c.team || !alive(o)) continue;
@@ -448,9 +463,9 @@ function beamHit(c, sy) {
      bodies it pierces (nearest first) so it can't solo an entire army. */
   list.sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x));
   const BEAM_PIERCE = 8;
-  for (let i = 0; i < list.length && i < BEAM_PIERCE; i++) hurt(list[i], c.dmg * Math.pow(.9, i), { pierce: 1, src: c.x });
+  for (let i = 0; i < list.length && i < BEAM_PIERCE; i++) hurt(list[i], dmg * Math.pow(.9, i), { pierce: 1, src: c.x });
   const wallX = c.team === 1 ? EN_WALL : MY_WALL;
-  if (Math.abs(sy - (GROUND - 60)) < 120) damageWall(c.team === 1 ? G.foeWall : G.wall, c.dmg * .5 * (c.team === 1 ? 1 + G.mods.wallDmg : 1), wallX, c.team === -1);
+  if (Math.abs(sy - (GROUND - 60)) < 120) damageWall(c.team === 1 ? G.foeWall : G.wall, dmg * .5 * (c.team === 1 ? 1 + G.mods.wallDmg : 1), wallX, c.team === -1);
 }
 
 function heroShoot() {
@@ -509,6 +524,7 @@ function stepProjectiles(dt) {
     if ((hitMy || hitEn) && ny > GROUND - 280) {
       const tgt = hitEn ? G.foeWall : G.wall;
       damageWall(tgt, p.dmg * (p.wallMul || 1) * (p.team === 1 ? 1 + G.mods.wallDmg : 1), hitEn ? EN_WALL : MY_WALL, hitMy);
+      p.noWall = 1;                 // the blast below must not bill the same wall twice
       impact(p, nx, ny); G.P.splice(i, 1); continue;
     }
     /* ground */
@@ -600,13 +616,13 @@ function onProjectileHit(p, o, x, y) {
 
 function impact(p, x, y) {
   if (p.k === 'shell' || p.splash) {
-    boom(x, y, p.splash || 42, p.dmg * (p.splash ? 1 : .6), p.team === 1);
+    boom(x, y, p.splash || 42, p.dmg * (p.splash ? 1 : .6), p.team === 1, false, p.noWall);
     if (p.fireF) G.FX.push({ k: 'fire', x, w: 50, dps: p.dmg * .4, team: p.team, t: 0, life: 3 });
   } else if (p.hero) {
-    if (p.kind === 'bomb') boom(x, y, 96, p.dmg * .9, 1, true);
+    if (p.kind === 'bomb') boom(x, y, 96, p.dmg * .9, 1, true, p.noWall);
     else if (p.kind === 'fire') { fxFire(x, y, 6, 9, .5); fxSpark(x, y, 5, '#ffb060', 130, .3); igniteGround(x, p.dmg); }
     else { fxSpark(x, y, 4, '#c9b48a', 110, .25); }
-    if (y >= GROUND - 2) DECALS.push({ x, y: GROUND, a: Math.atan2(p.vy, p.vx), t: 0 });
+    if (y >= GROUND - 2) decal({ x, y: GROUND, a: Math.atan2(p.vy, p.vx), t: 0 });   // capped pool
   } else {
     fxSpark(x, y, 4, '#ffd08a', 130, .2);
   }
@@ -618,7 +634,8 @@ function igniteGround(x, dmg) {
   Art.decalScorch(x, GROUND + 4, 46);
 }
 
-function boom(x, y, r, dmg, mine, ffAll) {
+/* noWall: the caller already billed the wall for this hit (direct impact) */
+function boom(x, y, r, dmg, mine, ffAll, noWall) {
   r *= 1 + (mine ? G.mods.splashR : 0);
   dmg *= 1 + (mine ? G.mods.splashD : 0);
   fxExplosion(x, y, r, { floor: GROUND });
@@ -627,7 +644,7 @@ function boom(x, y, r, dmg, mine, ffAll) {
   if (y > GROUND - 40) Art.decalScorch(x, GROUND + 4, r * .8);
   splash(x, y, r, dmg, ffAll ? 0 : (mine ? 1 : -1));
   const wallX = mine ? EN_WALL : MY_WALL;
-  if (Math.abs(x - wallX) < r * 1.1) damageWall(mine ? G.foeWall : G.wall, dmg * .6 * (mine ? 1 + G.mods.wallDmg : 1), wallX, !mine);
+  if (!noWall && Math.abs(x - wallX) < r * 1.1) damageWall(mine ? G.foeWall : G.wall, dmg * .6 * (mine ? 1 + G.mods.wallDmg : 1), wallX, !mine);
 }
 function splash(x, y, r, dmg, team, opt) {
   for (const o of G.A) {
@@ -683,7 +700,7 @@ function hurt(c, amount, opt) {
     }
   }
   d = Math.max(d, amount * .12);          // bludgeon floor - armor stacking never zeroes a hit
-  c.hp -= d; c.hurtT = .12;
+  c.hp -= d; c.hurtT = .12; c.combatT = 2.5;
   if (!opt.silent) {
     const col = opt.hero ? (opt.tag === 'HEADSHOT' ? '#ffe27a' : opt.tag === 'CRIT' ? '#ff9d5a' : '#fff2d6')
       : (c.team === 1 ? '#ff9c8a' : '#ffd9b8');
@@ -873,6 +890,9 @@ function stepCity(dt) {
    ========================================================================= */
 function useAbility(id, wx) {
   const a = ABIL[id];
+  /* the dock stays clickable behind the intermission / pause sheets — a command
+     fired there burned its cooldown on a battle that was already over */
+  if (G.phase !== 'battle' || G.paused) { SFX.deny(); return; }
   if (!G.mods.abil[id]) { SFX.deny(); return; }
   if (G.abilCd[id] > 0) { SFX.deny(); return; }
   if (a.target && wx === undefined) { G.armed = G.armed === id ? null : id; SFX.ui(); syncDock(); return; }
@@ -934,7 +954,7 @@ function startCity(n) {
   if (!survivors.length && G.pendingArmy) {           // restored from a save
     survivors = G.pendingArmy.map(id => UNIT[id]).filter(Boolean).map(def => ({
       team: 1, def, id: def.id, stance: def.stance, armor: def.armor, range: def.range,
-      r: def.r * 1.15, pop: def.pop, veh: !!def.veh, s: bodyScale(def), fly: 0,
+      r: def.r * 1.15, pop: def.pop, veh: !!def.veh, s: bodyScale(def), fly: def.fly ? 1 : 0,
       ph: rnd(TAU), recoil: 0, charge: 0, sep: rnd(-12, 12), champ: null,
     }));
   }
@@ -946,7 +966,8 @@ function startCity(n) {
   survivors.forEach((c, i) => {
     refreshUnit(c);
     c.x = MY_GATE - 10 + (i % 5) * 26 + rnd(-6, 6);
-    c.y = GROUND + (c.sep = rnd(-12, 12));
+    c.sep = rnd(-12, 12);
+    c.y = c.fly ? 470 + rnd(-30, 30) : GROUND + c.sep;   // veteran fliers muster in the air
     G.A.push(c); G.pop += c.pop;
   });
   if (survivors.length) toast(survivors.length + ' VETERANS MARCH WITH YOU', 'good');
@@ -961,6 +982,7 @@ function startCity(n) {
   G.shield = G.mods.shieldMax;
   G.wind = rnd(-2.6, 2.6); G.windT = 0;
   G.rally = 0; G.combo = 0; G.levelT = 0; G.ended = 0;
+  G.armed = null; cancelDraw();          // no command stays armed across the march
   ABILITIES.forEach(a => G.abilCd[a.id] = 4);
   G.foeTurrets = [];
   const base = GROUND + 6;
@@ -1021,6 +1043,10 @@ const rwd = (k, v, l) => `<div class="rwd ${k}"><div class="v">${v}</div><div cl
 /* =========================================================================
    HERO
    ========================================================================= */
+/* drop a half-drawn bow: releasing the button after a pause used to loose the
+   shot (and spend the arrow's gold) into a frozen battle */
+function cancelDraw() { G.drawing = false; G.charge = 0; G.released = 0; }
+
 function stepHero(dt) {
   if (G.drawing) {
     const rate = 1 / (0.68 / (bow().draw * G.mods.drawSpeed));
@@ -1694,7 +1720,7 @@ function syncCouncil(spent) {
   }
 }
 function openCouncil(tab) {
-  $('tech').hidden = false; G.paused = true;
+  $('tech').hidden = false; G.paused = true; cancelDraw();
   if (tab) switchTab(tab);
   buildTech(); buildArmory(); buildHero(); syncCouncil(); SFX.ui();
 }
@@ -1816,7 +1842,7 @@ function togglePause() {
   if (G.phase !== 'battle') return;
   G.paused = !G.paused;
   $('pause').hidden = !G.paused;
-  if (!G.paused) $('tech').hidden = true;
+  if (G.paused) cancelDraw(); else $('tech').hidden = true;
 }
 
 /* =========================================================================
@@ -1896,7 +1922,7 @@ function nextCity() {
 
 /* backgrounded tab = explicit pause, so returning never reads as a stall */
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && G.phase === 'battle' && !G.paused) { G.paused = true; $('pause').hidden = false; }
+  if (document.hidden && G.phase === 'battle' && !G.paused) { G.paused = true; $('pause').hidden = false; cancelDraw(); }
 });
 
 /* =========================================================================
