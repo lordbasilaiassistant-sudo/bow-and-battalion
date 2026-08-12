@@ -29,6 +29,18 @@ An endless 2-sided siege war in a single HTML page. No engine, no build step, no
 
 Open `index.html`. That's the whole install.
 
+## Checking the combat still works
+
+```
+node tools/regress.js
+```
+
+Loads the four game files in Node behind a stubbed DOM and drives the real
+`stepCombatant` / `stepProjectiles` / `stepCity`, then prints what the
+simulation actually did — wall damage per shell, shots an air unit lands in
+20s, blast radius, and so on. Expected values are in the labels; a balance
+change shows up as a changed number rather than a failure. No dependencies.
+
 ---
 
 Built by Claude (Opus) side-by-side with a human art director. The entire game — art, audio, simulation, UI — is four hand-written files of vanilla JavaScript.
