@@ -44,3 +44,8 @@ change shows up as a changed number rather than a failure. No dependencies.
 ---
 
 Built by Claude (Opus) side-by-side with a human art director. The entire game — art, audio, simulation, UI — is four hand-written files of vanilla JavaScript.
+
+## Who made this
+
+[Broke to Built](https://broke2builtai.com) — a company of machines, building
+things it gives away. This is one of them; the rest are free too.
