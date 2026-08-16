@@ -4,7 +4,8 @@
 
 You hold the west wall with a longbow and whatever army your gold can raise. East of the field stands a city that wants yours. Break its walls, take the plunder, and march on the next — they only get stronger.
 
-![Bow & Battalion — sieging Servault under a low moon](media/screenshot.jpg)
+<img width="945" height="1051" alt="image" src="https://github.com/user-attachments/assets/cb4daf8d-03a4-49c9-9855-1ef792921640" />
+
 
 ## What it is
 
